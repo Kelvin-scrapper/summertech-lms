@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { Clock, PlayCircle, ArrowRight, BookOpen } from 'lucide-react';
 import { requireUser } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { getCourseTree, courseProgress, nextLesson } from '@/lib/progress';
+import { load } from '@/lib/api';
+import type { LearningItem } from '@/lib/types';
 import ProgressBar from '@/components/ProgressBar';
 
 const areaGradient: Record<string, string> = {
@@ -15,22 +15,7 @@ const areaGradient: Record<string, string> = {
 export default async function DashboardPage() {
   const user = await requireUser();
 
-  const enrollments = await prisma.enrollment.findMany({
-    where: { userId: user.id, status: { not: 'DROPPED' } },
-    orderBy: { enrolledAt: 'asc' },
-    include: { course: true },
-  });
-
-  const cards = await Promise.all(
-    enrollments.map(async (e) => {
-      const tree = await getCourseTree(e.course.slug);
-      if (!tree) return null;
-      const prog = await courseProgress(user.id, tree);
-      const nxt = nextLesson(tree, prog.completed);
-      return { course: e.course, prog, nxt };
-    }),
-  );
-  const learning = cards.filter((c): c is NonNullable<typeof c> => c !== null);
+  const learning = await load<LearningItem[]>('/learning');
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -52,7 +37,7 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          {learning.map(({ course, prog, nxt }) => (
+          {learning.map(({ course, progress: prog, next: nxt }) => (
             <div key={course.id} className="card flex flex-col overflow-hidden sm:flex-row">
               <div
                 className={`flex shrink-0 items-end bg-gradient-to-br p-5 text-white sm:w-56 ${
@@ -83,14 +68,14 @@ export default async function DashboardPage() {
                 <div className="mt-auto flex flex-col gap-3 pt-5 sm:flex-row sm:items-center">
                   <div className="flex-1">
                     <p className="mb-1.5 text-xs font-medium text-slate-600">
-                      {nxt ? `${nxt.module.title} · ${nxt.lesson.title}` : 'All lessons complete 🎉'}
+                      {nxt ? `${nxt.moduleTitle} · ${nxt.lessonTitle}` : 'All lessons complete 🎉'}
                     </p>
                     <ProgressBar percent={prog.percent} />
                   </div>
                   <Link
                     href={
                       nxt
-                        ? `/learn/${course.slug}/${nxt.lesson.id}`
+                        ? `/learn/${course.slug}/${nxt.lessonId}`
                         : `/courses/${course.slug}`
                     }
                     className="btn-primary shrink-0"

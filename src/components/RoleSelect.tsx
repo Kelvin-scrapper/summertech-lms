@@ -1,10 +1,9 @@
 'use client';
 
 import { useTransition } from 'react';
-import type { Role } from '@prisma/client';
+import { ROLES, type Role } from '@/lib/types';
 import { adminSetRole } from '@/lib/actions';
 
-const ROLES: Role[] = ['STUDENT', 'MENTOR', 'INSTRUCTOR', 'ADMIN'];
 
 export default function RoleSelect({
   userId,

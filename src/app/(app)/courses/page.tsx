@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import { BookOpen, Check } from 'lucide-react';
 import type { Metadata } from 'next';
-import { requireUser } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { load } from '@/lib/api';
+import type { CourseListItem } from '@/lib/types';
 
 export const metadata: Metadata = { title: 'All Courses' };
 
@@ -14,16 +14,7 @@ const areaBadge: Record<string, string> = {
 };
 
 export default async function CoursesPage() {
-  const user = await requireUser();
-
-  const [courses, enrollments] = await Promise.all([
-    prisma.course.findMany({
-      orderBy: { order: 'asc' },
-      include: { _count: { select: { modules: true } } },
-    }),
-    prisma.enrollment.findMany({ where: { userId: user.id }, select: { courseId: true } }),
-  ]);
-  const enrolled = new Set(enrollments.map((e) => e.courseId));
+  const courses = await load<CourseListItem[]>('/courses');
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -42,7 +33,7 @@ export default async function CoursesPage() {
                 {c.area}
               </span>
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{c.tier}</span>
-              {enrolled.has(c.id) ? (
+              {c.enrolled ? (
                 <span className="ml-auto flex items-center gap-1 text-xs font-semibold text-brand-700">
                   <Check className="h-3.5 w-3.5" /> Enrolled
                 </span>
@@ -54,7 +45,7 @@ export default async function CoursesPage() {
 
             <div className="mt-4 flex items-center gap-4 text-xs text-slate-500">
               <span className="flex items-center gap-1.5">
-                <BookOpen className="h-4 w-4" /> {c._count.modules} modules
+                <BookOpen className="h-4 w-4" /> {c.moduleCount} modules
               </span>
               <span>{c.durationText}</span>
             </div>

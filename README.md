@@ -1,108 +1,95 @@
-# Summertech LMS
+# Summertech LMS (web app)
 
-The Summertech learning platform — **a separate app from the marketing website**. Students take
-courses; tutors edit their course content; admins provision accounts and enrolments.
+The Summertech learning platform's web front end — **a separate app from the marketing website**.
+Students take courses; tutors edit their course content; admins provision accounts and enrolments.
+
+This app holds **no database and no business logic**. Everything — accounts, sign-in, courses,
+progress, tutor edits, uploads, email — lives in the **Summertech LMS API** (`../lms-api`), which
+this app calls over HTTP. The two are deployed and scaled separately.
+
+```
+browser ──► lms (Next.js, this repo) ──HTTP + Bearer token──► lms-api (Express) ──► PostgreSQL
+```
 
 Design reference: [`../docs/lms-design.md`](../docs/lms-design.md).
 
 ## Stack
 
-- **Next.js 15** (App Router) full-stack — pages, server actions, route handlers
-- **PostgreSQL** + **Prisma**
-- **Auth**: email + **hashed password** (scrypt) *or* magic link — no public sign-up; signed JWT session cookie via `jose`
-- **Tailwind CSS v4** — same design tokens as the website (emerald / orange, DM Sans / Plus Jakarta)
-- **Vercel Blob** for lesson file uploads (optional; links work without it)
+- **Next.js 15** (App Router) — server-rendered pages, server actions that call the API
+- **Tailwind CSS v4** — same design tokens as the website (warm sand / emerald / orange)
+- The API token is kept in an **httpOnly cookie**; browser JavaScript never sees it
 
 ## Roles
 
 | Role | Can |
 | --- | --- |
 | `STUDENT` | See enrolled courses, work through lessons, track progress |
-| `INSTRUCTOR` | All of the above + **Teaching** section: edit modules, lessons, notes and resources of assigned courses |
+| `INSTRUCTOR` | All of the above + **Teaching**: edit modules, lessons, notes and resources of assigned courses |
 | `MENTOR` | (reserved) same as student for now |
-| `ADMIN` | Everything + **Admin**: create & **approve/suspend** users, set roles, enrol learners, assign tutors |
+| `ADMIN` | Everything + **Admin**: create & suspend users, set roles, enrol learners, assign tutors |
 
-**Access control:** there is no self sign-up. An admin creates each account (optionally with an
-initial password) — that *is* the approval. An admin can suspend a user at any time (`Active` toggle
-in Admin → Users) to revoke access without deleting anything; suspended users are signed out on
-their next request. A user with no password can still receive a magic link and can set a password
-from Settings.
+There is no self sign-up: an admin creates each account. Permissions are enforced by the API on
+every request; this app's checks only decide what to show.
 
 ## Run it locally
 
+Start the API first (see `../lms-api/README.md`), then:
+
 ```bash
 cd lms
-cp .env.example .env          # then set AUTH_SECRET (openssl rand -base64 32)
-
-# Postgres via Docker:
-docker run --name summertech-lms-db -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=summertech_lms -p 5433:5432 -d postgres:16
-
+cp .env.example .env          # API_URL=http://localhost:4000
 npm install
-npm run db:push               # create tables
-npm run db:seed               # 5 courses + demo users
 npm run dev                   # http://localhost:3001
 ```
 
-### Signing in (dev)
-
-Seed accounts — password **`Passw0rd!`** for all three:
-
-| Email | Role |
-| --- | --- |
-| `admin@summertech.ac.ke` | ADMIN |
-| `grace@summertech.ac.ke` | INSTRUCTOR (tutors Full-Stack + UI/UX) |
-| `kelvin@summertech.ac.ke` | STUDENT (enrolled in Full-Stack) |
-
-Go to `/login` and sign in with email + password. To test magic links instead, use
-*"Email me a sign-in link"* — with no `RESEND_API_KEY` set, the link is printed to the terminal
-running `npm run dev`.
+Demo accounts (password **`Passw0rd!`**) come from the API's seed: `admin@summertech.ac.ke`,
+`grace@summertech.ac.ke` (tutor), `kelvin@summertech.ac.ke` (student). Magic-link emails are
+printed in the **API's** terminal when no `RESEND_API_KEY` is set there.
 
 ## Environment variables
 
-| Variable | Purpose | If unset |
-| --- | --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string | required |
-| `AUTH_SECRET` | signs session + magic-link JWTs (≥ 16 chars); passwords use scrypt and need no key | required |
-| `APP_URL` | base URL for magic-link URLs | `http://localhost:3001` |
-| `RESEND_API_KEY` | send magic-link emails via Resend | links printed to server console |
-| `EMAIL_FROM` | From address for emails | a default |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob store token, for lesson file uploads | file upload disabled; attach resources by URL instead |
+| Variable | Purpose |
+| --- | --- |
+| `API_URL` | Base URL of the Summertech LMS API (required) |
+
+Database, JWT secret, email and file-storage settings belong to the API, not here.
 
 ## Structure
 
 ```
-prisma/schema.prisma     User, LoginToken, Course, Module, Lesson, Resource,
-                         Enrollment, LessonProgress
-prisma/seed.ts           demo data
 src/
-  middleware.ts          route protection (edge JWT check)
+  middleware.ts          sends visitors without a session cookie to /login
   app/
-    login/               magic-link request
-    api/auth/verify/     magic-link callback -> session
-    api/teach/upload/    lesson file upload -> Vercel Blob
-    (app)/               authed area: sidebar + topbar layout
-      dashboard/         "My Learning Path"
-      courses/  courses/[slug]/
-      learn/[slug]/[lessonId]/     lesson player
-      teach/  teach/[slug]/        tutor course editor
+    login/               password or magic-link sign-in
+    api/auth/verify/     magic-link landing: API verifies, we set the cookie
+    api/teach/upload/    forwards lesson uploads to the API with the session token
+    (app)/               signed-in area: sidebar + top bar layout, error boundary
+      dashboard/  courses/  courses/[slug]/  learn/[slug]/[lessonId]/
+      teach/  teach/[slug]/            tutor course editor
       admin/  admin/users/  admin/enrollments/  admin/courses/
       settings/  help/
-  lib/                   prisma, session (jose), auth guards, magic-link,
-                         email, actions (server actions), progress, embed
-  components/             Sidebar, MagicLinkForm, CourseEditor, ResourceUploader, …
+  lib/
+    api.ts               fetch wrapper for the API (+ load() for pages)
+    types.ts             API response types
+    session.ts           session cookie
+    auth.ts              current user / role guards (via GET /auth/me)
+    actions.ts           server actions → API calls
+    embed.ts progress.ts form.ts
+  components/            Sidebar, CourseEditor, ResourceUploader, forms, …
 ```
 
 ## Deploy (Vercel)
 
-1. Push this folder as its own repo, import in Vercel (Root Directory = repo root).
-2. Add a **Postgres** database (Vercel Postgres / Neon) and a **Blob** store; set the env vars.
-3. Set `AUTH_SECRET`, `APP_URL` (your deployment URL), and optionally `RESEND_API_KEY`.
-4. Build command `npm run build` runs `prisma generate` first. After first deploy, run
-   `npx prisma migrate deploy` (or `db push`) against the production database, then seed if desired.
+1. Deploy the API somewhere reachable (see `../lms-api/README.md`).
+2. Import this repo in Vercel and set `API_URL` to the API's public URL.
+3. On the API, set `APP_URL` to this app's URL (magic links point here) and add it to
+   `FRONTEND_ORIGIN`.
+
+Uploads pass through this app on their way to the API, so on Vercel they're capped by the
+platform's request-body limit (about 4.5 MB). For large videos, attach a YouTube/Drive link, or
+host this app somewhere without that limit.
 
 ## Not done yet
 
 - Mentor check-ins, at-risk detection, certificates, attendance (see the design doc's later phases)
 - Rich text / file drag-and-drop in the lesson editor (Markdown textarea for now)
-- Email verification of the magic-link sender domain

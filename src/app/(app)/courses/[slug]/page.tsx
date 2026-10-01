@@ -1,16 +1,17 @@
+import { cache } from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { CheckCircle2, Circle, Clock, PlayCircle, Paperclip } from 'lucide-react';
-import { requireUser } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { getCourseTree, courseProgress, nextLesson } from '@/lib/progress';
+import { load } from '@/lib/api';
+import type { CourseDetail } from '@/lib/types';
 import ProgressBar from '@/components/ProgressBar';
 import EnrollButton from '@/components/EnrollButton';
 
+// Shared by the metadata and the page, so the API is called once per request.
+const getCourse = cache((slug: string) => load<CourseDetail>(`/courses/${encodeURIComponent(slug)}`));
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const course = await prisma.course.findUnique({ where: { slug }, select: { title: true } });
-  return { title: course?.title ?? 'Course' };
+  return { title: (await getCourse(slug)).course.title };
 }
 
 export default async function CourseOverviewPage({
@@ -18,19 +19,9 @@ export default async function CourseOverviewPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const user = await requireUser();
   const { slug } = await params;
-
-  const course = await getCourseTree(slug);
-  if (!course) notFound();
-
-  const [enrollment, prog] = await Promise.all([
-    prisma.enrollment.findUnique({
-      where: { userId_courseId: { userId: user.id, courseId: course.id } },
-    }),
-    courseProgress(user.id, course),
-  ]);
-  const nxt = nextLesson(course, prog.completed);
+  const { course, enrollment, canEdit, progress: prog, next: nxt } = await getCourse(slug);
+  const completed = new Set(prog.completedLessonIds);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -64,7 +55,7 @@ export default async function CourseOverviewPage({
               <ProgressBar percent={prog.percent} />
             </div>
             <Link
-              href={nxt ? `/learn/${course.slug}/${nxt.lesson.id}` : '#'}
+              href={nxt ? `/learn/${course.slug}/${nxt.lessonId}` : '#'}
               className="btn-primary mt-4"
             >
               <PlayCircle className="h-4 w-4" />
@@ -92,7 +83,7 @@ export default async function CourseOverviewPage({
             </div>
             <ul className="divide-y divide-slate-100">
               {m.lessons.map((l) => {
-                const done = prog.completed.has(l.id);
+                const done = completed.has(l.id);
                 const inner = (
                   <div className="flex items-center gap-3 px-5 py-3">
                     {done ? (
@@ -103,10 +94,10 @@ export default async function CourseOverviewPage({
                     <span className={`flex-1 text-sm ${done ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
                       {l.title}
                     </span>
-                    {l.resources.length > 0 ? (
+                    {l.resourceCount > 0 ? (
                       <span className="flex items-center gap-1 text-xs text-slate-400">
                         <Paperclip className="h-3.5 w-3.5" />
-                        {l.resources.length}
+                        {l.resourceCount}
                       </span>
                     ) : null}
                     <span className="text-xs text-slate-400">{l.estMinutes}m</span>
@@ -114,7 +105,7 @@ export default async function CourseOverviewPage({
                 );
                 return (
                   <li key={l.id}>
-                    {enrollment ? (
+                    {enrollment || canEdit ? (
                       <Link href={`/learn/${course.slug}/${l.id}`} className="block hover:bg-slate-50">
                         {inner}
                       </Link>

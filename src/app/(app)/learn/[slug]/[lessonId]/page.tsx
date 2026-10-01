@@ -1,9 +1,9 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Clock } from 'lucide-react';
-import { requireUser } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-import { getCourseTree, courseProgress, flattenLessons } from '@/lib/progress';
+import { load } from '@/lib/api';
+import { flattenLessons } from '@/lib/progress';
+import type { CourseDetail } from '@/lib/types';
 import Markdown from '@/components/Markdown';
 import MarkCompleteButton from '@/components/MarkCompleteButton';
 import ResourceView from '@/components/ResourceView';
@@ -14,16 +14,10 @@ export default async function LessonPage({
 }: {
   params: Promise<{ slug: string; lessonId: string }>;
 }) {
-  const user = await requireUser();
   const { slug, lessonId } = await params;
 
-  const course = await getCourseTree(slug);
-  if (!course) notFound();
-
-  const enrollment = await prisma.enrollment.findUnique({
-    where: { userId_courseId: { userId: user.id, courseId: course.id } },
-  });
-  if (!enrollment) redirect(`/courses/${slug}`);
+  const { course, enrollment, canEdit, progress: prog } = await load<CourseDetail>(`/courses/${encodeURIComponent(slug)}`);
+  if (!enrollment && !canEdit) redirect(`/courses/${slug}`);
 
   const flat = flattenLessons(course);
   const index = flat.findIndex((l) => l.id === lessonId);
@@ -33,8 +27,9 @@ export default async function LessonPage({
   const prev = flat[index - 1];
   const next = flat[index + 1];
 
-  const prog = await courseProgress(user.id, course);
-  const done = prog.completed.has(lesson.id);
+  const completed = new Set(prog.completedLessonIds);
+  const done = completed.has(lesson.id);
+  const resources = lesson.resources ?? [];
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[260px_1fr]">
@@ -55,7 +50,7 @@ export default async function LessonPage({
               <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">{m.title}</p>
               <ul className="space-y-0.5">
                 {m.lessons.map((l) => {
-                  const isDone = prog.completed.has(l.id);
+                  const isDone = completed.has(l.id);
                   const active = l.id === lesson.id;
                   return (
                     <li key={l.id}>
@@ -89,16 +84,16 @@ export default async function LessonPage({
           <Clock className="h-4 w-4" /> about {lesson.estMinutes} min
         </p>
 
-        {lesson.resources.length > 0 ? (
+        {resources.length > 0 ? (
           <div className="mt-6 space-y-3">
-            {lesson.resources.map((r) => (
+            {resources.map((r) => (
               <ResourceView key={r.id} resource={r} />
             ))}
           </div>
         ) : null}
 
         <div className="mt-6">
-          {lesson.contentMarkdown.trim() ? (
+          {lesson.contentMarkdown?.trim() ? (
             <Markdown>{lesson.contentMarkdown}</Markdown>
           ) : (
             <p className="text-sm text-slate-400">No written notes for this lesson yet.</p>
@@ -106,7 +101,7 @@ export default async function LessonPage({
         </div>
 
         <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200 pt-6">
-          <MarkCompleteButton lessonId={lesson.id} done={done} />
+          {enrollment ? <MarkCompleteButton lessonId={lesson.id} done={done} /> : <span />}
           <div className="flex gap-2">
             {prev ? (
               <Link href={`/learn/${slug}/${prev.id}`} className="btn-secondary">

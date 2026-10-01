@@ -1,26 +1,15 @@
 import type { Metadata } from 'next';
 import { X } from 'lucide-react';
-import { requireRole } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { load } from '@/lib/api';
 import { adminAssignInstructor, adminUnassignInstructor } from '@/lib/actions';
+import type { AdminUser, CourseListItem } from '@/lib/types';
 
 export const metadata: Metadata = { title: 'Admin · Courses' };
 
 export default async function AdminCoursesPage() {
-  await requireRole(['ADMIN']);
-
   const [courses, staff] = await Promise.all([
-    prisma.course.findMany({
-      orderBy: { order: 'asc' },
-      include: {
-        instructors: { select: { id: true, name: true, email: true } },
-        _count: { select: { modules: true, enrollments: true } },
-      },
-    }),
-    prisma.user.findMany({
-      where: { role: { in: ['INSTRUCTOR', 'ADMIN'] } },
-      orderBy: { name: 'asc' },
-    }),
+    load<CourseListItem[]>('/courses'),
+    load<AdminUser[]>('/users?roles=INSTRUCTOR,ADMIN'),
   ]);
 
   return (
@@ -35,7 +24,7 @@ export default async function AdminCoursesPage() {
               <div>
                 <h2 className="font-display text-lg font-bold">{c.title}</h2>
                 <p className="text-sm text-slate-500">
-                  {c._count.modules} modules · {c._count.enrollments} enrolled
+                  {c.moduleCount} modules · {c.enrollmentCount ?? 0} enrolled
                 </p>
               </div>
             </div>

@@ -1,32 +1,16 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { verifyToken, SESSION_COOKIE } from '@/lib/session';
+import { SESSION_COOKIE } from '@/lib/session';
 
-const PROTECTED = ['/dashboard', '/courses', '/learn', '/settings', '/help', '/teach', '/admin'];
+// Sends visitors without a session to sign-in before any page work happens.
+// The API is the authority: pages re-check the user and role on every load.
+export function middleware(req: NextRequest) {
+  if (req.cookies.get(SESSION_COOKIE)?.value) return NextResponse.next();
 
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  if (!PROTECTED.some((p) => pathname === p || pathname.startsWith(p + '/'))) {
-    return NextResponse.next();
-  }
-
-  const token = req.cookies.get(SESSION_COOKIE)?.value;
-  const session = token ? await verifyToken(token) : null;
-
-  if (!session) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/login';
-    url.searchParams.set('next', pathname);
-    return NextResponse.redirect(url);
-  }
-
-  if (pathname.startsWith('/admin') && session.role !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/dashboard', req.url));
-  }
-  if (pathname.startsWith('/teach') && session.role !== 'INSTRUCTOR' && session.role !== 'ADMIN') {
-    return NextResponse.redirect(new URL('/dashboard', req.url));
-  }
-
-  return NextResponse.next();
+  const url = req.nextUrl.clone();
+  url.pathname = '/login';
+  url.search = '';
+  url.searchParams.set('next', req.nextUrl.pathname);
+  return NextResponse.redirect(url);
 }
 
 export const config = {
