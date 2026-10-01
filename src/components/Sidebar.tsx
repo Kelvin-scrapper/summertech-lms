@@ -15,7 +15,7 @@ import {
   SquarePen,
   ShieldCheck,
 } from 'lucide-react';
-import type { Role } from '@prisma/client';
+import type { Role } from '@/lib/types';
 import SignOutButton from './SignOutButton';
 
 const base = [

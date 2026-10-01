@@ -1,21 +1,17 @@
 import type { Metadata } from 'next';
-import { requireRole } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { load } from '@/lib/api';
 import { adminEnroll } from '@/lib/actions';
+import type { AdminUser, CourseListItem, EnrollmentRow } from '@/lib/types';
 
 export const metadata: Metadata = { title: 'Admin · Enrolments' };
 
 export default async function AdminEnrollmentsPage() {
-  await requireRole(['ADMIN']);
-
-  const [users, courses, enrollments] = await Promise.all([
-    prisma.user.findMany({ orderBy: { name: 'asc' } }),
-    prisma.course.findMany({ orderBy: { order: 'asc' } }),
-    prisma.enrollment.findMany({
-      orderBy: { enrolledAt: 'desc' },
-      include: { user: true, course: true },
-    }),
+  const [allUsers, courses, enrollments] = await Promise.all([
+    load<AdminUser[]>('/users'),
+    load<CourseListItem[]>('/courses'),
+    load<EnrollmentRow[]>('/enrollments'),
   ]);
+  const users = [...allUsers].sort((a, b) => (a.name ?? a.email).localeCompare(b.name ?? b.email));
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -71,7 +67,7 @@ export default async function AdminEnrollmentsPage() {
                 <td className="px-5 py-3 text-slate-600">{e.course.title}</td>
                 <td className="px-5 py-3 text-slate-500">{e.status.toLowerCase()}</td>
                 <td className="px-5 py-3 text-slate-500">
-                  {e.enrolledAt.toLocaleDateString('en-KE')}
+                  {new Date(e.enrolledAt).toLocaleDateString('en-KE')}
                 </td>
               </tr>
             ))}

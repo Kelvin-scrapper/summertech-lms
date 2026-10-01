@@ -2,21 +2,15 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { SquarePen, BookOpen } from 'lucide-react';
 import { requireRole } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { load } from '@/lib/api';
+import type { TeachableCourse } from '@/lib/types';
 
 export const metadata: Metadata = { title: 'Teaching' };
 
 export default async function TeachPage() {
   const user = await requireRole(['INSTRUCTOR', 'ADMIN']);
 
-  const courses = await prisma.course.findMany({
-    where: user.role === 'ADMIN' ? {} : { instructors: { some: { id: user.id } } },
-    orderBy: { order: 'asc' },
-    include: {
-      _count: { select: { modules: true, enrollments: true } },
-      modules: { select: { _count: { select: { lessons: true } } } },
-    },
-  });
+  const courses = await load<TeachableCourse[]>('/teach/courses');
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -34,7 +28,6 @@ export default async function TeachPage() {
       ) : (
         <div className="mt-8 space-y-4">
           {courses.map((c) => {
-            const lessons = c.modules.reduce((n, m) => n + m._count.lessons, 0);
             return (
               <Link
                 key={c.id}
@@ -47,7 +40,7 @@ export default async function TeachPage() {
                 <div className="min-w-0 flex-1">
                   <h2 className="font-display text-lg font-bold">{c.title}</h2>
                   <p className="text-sm text-slate-500">
-                    {c._count.modules} modules · {lessons} lessons · {c._count.enrollments} enrolled
+                    {c.moduleCount} modules · {c.lessonCount} lessons · {c.enrollmentCount} enrolled
                   </p>
                 </div>
                 <SquarePen className="h-4 w-4 shrink-0 text-slate-400" />

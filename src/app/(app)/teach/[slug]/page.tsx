@@ -1,14 +1,15 @@
+import { cache } from 'react';
 import Link from 'next/link';
-import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft, Eye } from 'lucide-react';
-import { requireRole, teachesCourse } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { load } from '@/lib/api';
+import type { EditableCourse } from '@/lib/types';
 import CourseEditor from '@/components/CourseEditor';
+
+const getCourse = cache((slug: string) => load<EditableCourse>(`/teach/courses/${encodeURIComponent(slug)}`));
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const c = await prisma.course.findUnique({ where: { slug }, select: { title: true } });
-  return { title: c ? `Edit · ${c.title}` : 'Edit course' };
+  return { title: `Edit · ${(await getCourse(slug)).title}` };
 }
 
 export default async function TeachCoursePage({
@@ -16,25 +17,8 @@ export default async function TeachCoursePage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const user = await requireRole(['INSTRUCTOR', 'ADMIN']);
   const { slug } = await params;
-
-  const course = await prisma.course.findUnique({
-    where: { slug },
-    include: {
-      modules: {
-        orderBy: { order: 'asc' },
-        include: {
-          lessons: {
-            orderBy: { order: 'asc' },
-            include: { resources: { orderBy: { order: 'asc' } } },
-          },
-        },
-      },
-    },
-  });
-  if (!course) notFound();
-  if (!(await teachesCourse(user.id, course.id))) redirect('/teach');
+  const course = await getCourse(slug);
 
   return (
     <div className="mx-auto max-w-3xl">

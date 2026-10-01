@@ -1,21 +1,13 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import { Users, GraduationCap, BookOpen, ArrowRight } from 'lucide-react';
-import { requireRole } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { load } from '@/lib/api';
+import { ROLES, type Stats } from '@/lib/types';
 
 export const metadata: Metadata = { title: 'Admin' };
 
 export default async function AdminHome() {
-  await requireRole(['ADMIN']);
-
-  const [users, courses, enrollments, byRole] = await Promise.all([
-    prisma.user.count(),
-    prisma.course.count(),
-    prisma.enrollment.count(),
-    prisma.user.groupBy({ by: ['role'], _count: true }),
-  ]);
-  const roleCount = Object.fromEntries(byRole.map((r) => [r.role, r._count]));
+  const { users, courses, enrollments, usersByRole } = await load<Stats>('/stats');
 
   const stats = [
     { label: 'Users', value: users, icon: Users },
@@ -44,8 +36,8 @@ export default async function AdminHome() {
       </div>
 
       <p className="mt-4 text-sm text-slate-500">
-        {(['STUDENT', 'MENTOR', 'INSTRUCTOR', 'ADMIN'] as const)
-          .map((r) => `${roleCount[r] ?? 0} ${r.toLowerCase()}`)
+        {ROLES
+          .map((r) => `${usersByRole[r] ?? 0} ${r.toLowerCase()}`)
           .join(' · ')}
       </p>
 

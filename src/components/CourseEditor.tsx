@@ -11,7 +11,7 @@ import {
   Link2,
   ExternalLink,
 } from 'lucide-react';
-import type { Resource, ResourceKind } from '@prisma/client';
+import type { EditableCourse, ResourceKind } from '@/lib/types';
 import {
   createModule,
   renameModule,
@@ -26,24 +26,13 @@ import {
 } from '@/lib/actions';
 import ResourceUploader from './ResourceUploader';
 
-type LessonT = {
-  id: string;
-  title: string;
-  order: number;
-  estMinutes: number;
-  contentMarkdown: string;
-  resources: Resource[];
-};
-type ModuleT = { id: string; title: string; order: number; lessons: LessonT[] };
-type CourseT = { id: string; title: string; slug: string; modules: ModuleT[] };
-
 function confirmSubmit(message: string) {
   return (e: React.FormEvent) => {
     if (!window.confirm(message)) e.preventDefault();
   };
 }
 
-export default function CourseEditor({ course }: { course: CourseT }) {
+export default function CourseEditor({ course }: { course: EditableCourse }) {
   const [open, setOpen] = useState<string | null>(null);
 
   return (

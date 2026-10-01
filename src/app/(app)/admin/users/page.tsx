@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { requireRole } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import { load } from '@/lib/api';
+import type { AdminUser } from '@/lib/types';
 import AdminCreateUserForm from '@/components/AdminCreateUserForm';
 import RoleSelect from '@/components/RoleSelect';
 import ActiveToggle from '@/components/ActiveToggle';
@@ -9,10 +10,7 @@ export const metadata: Metadata = { title: 'Admin · Users' };
 
 export default async function AdminUsersPage() {
   const me = await requireRole(['ADMIN']);
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: { _count: { select: { enrollments: true, teaches: true } } },
-  });
+  const users = await load<AdminUser[]>('/users');
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -49,11 +47,11 @@ export default async function AdminUsersPage() {
                   <RoleSelect userId={u.id} role={u.role} disabled={u.id === me.id} />
                 </td>
                 <td className="px-5 py-3 text-slate-600">
-                  {u._count.enrollments}
-                  {u._count.teaches > 0 ? ` · tutors ${u._count.teaches}` : ''}
+                  {u.enrollmentCount}
+                  {u.teachingCount > 0 ? ` · tutors ${u.teachingCount}` : ''}
                 </td>
                 <td className="px-5 py-3 text-slate-500">
-                  {u.passwordHash ? 'password' : 'magic link'}
+                  {u.hasPassword ? 'password' : 'magic link'}
                   {u.emailVerified ? ' · verified' : ''}
                 </td>
               </tr>

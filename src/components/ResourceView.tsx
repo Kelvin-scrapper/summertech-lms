@@ -1,5 +1,5 @@
 import { FileText, Presentation, Link2, Paperclip, Video, Download } from 'lucide-react';
-import type { Resource } from '@prisma/client';
+import type { Resource } from '@/lib/types';
 import { embedSrc, isDirectVideo } from '@/lib/embed';
 
 const icons = { VIDEO: Video, PDF: FileText, SLIDES: Presentation, LINK: Link2, OTHER: Paperclip };

@@ -1,5 +1,3 @@
-import type { ResourceKind } from '@prisma/client';
-
 /** Turn a resource URL into an <iframe> src if it's an embeddable video, else null. */
 export function embedSrc(url: string): string | null {
   try {
@@ -32,27 +30,4 @@ export function embedSrc(url: string): string | null {
 
 export function isDirectVideo(url: string): boolean {
   return /\.(mp4|webm|ogg|mov)(\?|$)/i.test(url);
-}
-
-export function iconForKind(kind: ResourceKind): string {
-  switch (kind) {
-    case 'VIDEO':
-      return 'video';
-    case 'PDF':
-      return 'file-text';
-    case 'SLIDES':
-      return 'presentation';
-    case 'LINK':
-      return 'link';
-    default:
-      return 'paperclip';
-  }
-}
-
-export function guessKind(filename: string): ResourceKind {
-  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-  if (['mp4', 'webm', 'mov', 'ogg', 'm4v'].includes(ext)) return 'VIDEO';
-  if (ext === 'pdf') return 'PDF';
-  if (['ppt', 'pptx', 'key', 'odp'].includes(ext)) return 'SLIDES';
-  return 'OTHER';
 }

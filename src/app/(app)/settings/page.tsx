@@ -40,12 +40,12 @@ export default async function SettingsPage() {
       <section className="card mt-6 p-6">
         <h2 className="font-display text-lg font-bold">Password</h2>
         <p className="mt-1 text-sm text-slate-500">
-          {user.passwordHash
+          {user.hasPassword
             ? 'Change the password you use to sign in.'
             : 'You sign in with magic links. Set a password to also sign in with one.'}
         </p>
         <div className="mt-4">
-          <ChangePasswordForm hasPassword={Boolean(user.passwordHash)} />
+          <ChangePasswordForm hasPassword={user.hasPassword} />
         </div>
       </section>
 

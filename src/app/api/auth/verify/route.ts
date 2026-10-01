@@ -1,26 +1,22 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { consumeMagicLink } from '@/lib/magic-link';
-import { createSession } from '@/lib/session';
+import { api } from '@/lib/api';
+import { setSession } from '@/lib/session';
+import type { Session } from '@/lib/types';
 
+// Magic-link landing: the API checks the token, we store the session cookie.
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const token = url.searchParams.get('token') ?? '';
   const email = url.searchParams.get('email') ?? '';
   const next = url.searchParams.get('next') || '/dashboard';
 
-  const userId = token && email ? await consumeMagicLink(email, token) : null;
-  if (!userId) {
+  try {
+    const session = await api<Session>('/auth/magic-link/verify', { method: 'POST', token: null, body: { email, token } });
+    await setSession(session.token, session.expiresAt);
+  } catch {
     return NextResponse.redirect(new URL('/login?error=link', request.url));
   }
 
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) {
-    return NextResponse.redirect(new URL('/login?error=link', request.url));
-  }
-
-  await createSession({ sub: user.id, email: user.email, name: user.name, role: user.role });
-
-  const dest = next.startsWith('/') ? next : '/dashboard';
+  const dest = next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
   return NextResponse.redirect(new URL(dest, request.url));
 }
