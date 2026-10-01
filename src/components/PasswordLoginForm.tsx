@@ -24,7 +24,7 @@ export default function PasswordLoginForm({ next }: { next?: string }) {
         </label>
         <input id="password" name="password" type="password" required autoComplete="current-password" className="input" />
       </div>
-      {state.error ? <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p> : null}
+      {state.error ? <p className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{state.error}</p> : null}
       <button type="submit" className="btn-primary w-full" disabled={pending}>
         {pending ? 'Signing in…' : 'Sign in'}
       </button>

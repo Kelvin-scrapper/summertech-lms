@@ -41,7 +41,7 @@ export default async function TeachPage() {
                 href={`/teach/${c.slug}`}
                 className="card flex items-center gap-4 p-5 transition-colors hover:border-slate-300"
               >
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-accent-50 text-accent-600">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-50 text-accent-600">
                   <BookOpen className="h-5 w-5" />
                 </span>
                 <div className="min-w-0 flex-1">

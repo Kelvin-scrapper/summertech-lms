@@ -29,7 +29,7 @@ export default function MagicLinkForm() {
         <input id="email" name="email" type="email" required autoComplete="email" className="input" placeholder="you@summertech.ac.ke" />
       </div>
       {state.error ? (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
+        <p className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{state.error}</p>
       ) : null}
       <button type="submit" className="btn-primary w-full" disabled={pending}>
         {pending ? 'Sending…' : 'Email me a sign-in link'}

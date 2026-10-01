@@ -11,7 +11,20 @@
   --color-accent-700: #c2410c;
   --color-accent-600: #ea580c;
   --color-accent-500: #f97316;
-  --color-accent-50: #fff7ed;
+  --color-accent-50: #fff2e8;
+
+  /* Warm sand scale shared with the marketing site; replaces Tailwind's cool slate everywhere. */
+  --color-slate-50: #fbf8f2;
+  --color-slate-100: #f3eee2;
+  --color-slate-200: #e7e1d2;
+  --color-slate-300: #d6cdb8;
+  --color-slate-400: #b3a890;
+  --color-slate-500: #8b8170;
+  --color-slate-600: #6e6555;
+  --color-slate-700: #544d40;
+  --color-slate-800: #3a362d;
+  --color-slate-900: #211e17;
+  --color-slate-950: #17140f;
 }
 
 @theme inline {
@@ -24,28 +37,39 @@ html {
 }
 
 body {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--color-slate-50);
+  color: var(--color-slate-900);
   -webkit-font-smoothing: antialiased;
 }
 
+::selection {
+  background-color: var(--color-accent-500);
+  color: white;
+}
+
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60;
 }
 @utility btn-primary {
-  @apply btn bg-accent-600 text-white hover:bg-accent-500;
+  @apply btn bg-accent-600 text-white hover:bg-accent-700;
 }
 @utility btn-secondary {
-  @apply btn border border-slate-200 bg-white text-slate-800 hover:border-slate-300;
+  @apply btn border border-slate-300 bg-transparent text-slate-900 hover:border-slate-900;
+}
+@utility btn-dark {
+  @apply btn bg-slate-900 text-slate-50 hover:bg-brand-950;
 }
 @utility btn-ghost {
   @apply btn text-slate-600 hover:bg-slate-100;
 }
 @utility btn-danger {
-  @apply btn border border-red-200 bg-white text-red-600 hover:bg-red-50;
+  @apply btn border border-red-200 bg-transparent text-red-600 hover:bg-red-50;
+}
+@utility eyebrow {
+  @apply text-xs font-bold uppercase tracking-[0.16em] text-accent-600;
 }
 @utility input {
-  @apply w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2.5 text-sm outline-none focus:border-accent-500;
+  @apply w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-accent-500 focus:ring-2 focus:ring-accent-500/15;
 }
 @utility label {
   @apply mb-1.5 block text-sm font-medium text-slate-800;

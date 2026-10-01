@@ -42,7 +42,7 @@ export default function ResourceView({ resource }: { resource: Resource }) {
       rel="noreferrer"
       className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 transition-colors hover:border-slate-300"
     >
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-50 text-accent-600">
         <Icon className="h-5 w-5" />
       </span>
       <span className="min-w-0 flex-1">
